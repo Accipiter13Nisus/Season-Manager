@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regional Weather Dashboard</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Load Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Apply Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for a cleaner look in dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2d3748; /* gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #718096; /* gray-500 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0; /* gray-400 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-inter antialiased min-h-screen">
+
+    <!-- Main Container -->
+    <div class="container mx-auto p-4 md:p-8">
+        
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">Regional Weather Probability Dashboard</h1>
+            <p class="text-lg text-gray-400 mt-2">Select a region to analyze its weather patterns.</p>
+        </header>
+
+        <!-- Control Panel -->
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Region Selector -->
+                <div>
+                    <label for="region-select" class="block text-sm font-medium text-gray-300 mb-2">Region</label>
+                    <select id="region-select" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-3 transition duration-150 ease-in-out">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                </div>
+                <!-- Season Selector -->
+                <div>
+                    <label for="season-select" class="block text-sm font-medium text-gray-300 mb-2">Season</label>
+                    <select id="season-select" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-3 transition duration-150 ease-in-out">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                </div>
+                <!-- Season Part Selector -->
+                <div>
+                    <label for="part-select" class="block text-sm font-medium text-gray-300 mb-2">Time of Season</label>
+                    <select id="part-select" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-3 transition duration-150 ease-in-out">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Display Area -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Left Column: Info Card & Data Table -->
+            <div class="lg:col-span-1 flex flex-col gap-8">
+                
+                <!-- Real-World Location Card -->
+                <div class="bg-gray-800 rounded-lg shadow-2xl p-6 h-fit">
+                    <h2 class="text-xl font-semibold text-white mb-3">Real-World Location</h2>
+                    <p id="real-world-info" class="text-2xl font-bold text-blue-400">
+                        <!-- Content will be populated by JS -->
+                    </p>
+                </div>
+
+                <!-- Data Table Card -->
+                <div class="bg-gray-800 rounded-lg shadow-2xl p-6 flex-grow">
+                    <h2 class="text-xl font-semibold text-white mb-4">Weather Probabilities</h2>
+                    <div class="overflow-x-auto max-h-96">
+                        <table class="w-full text-left">
+                            <thead class="sticky top-0 bg-gray-700">
+                                <tr>
+                                    <th class="p-3 text-sm font-semibold text-gray-300 uppercase tracking-wider rounded-tl-lg">Weather Type</th>
+                                    <th class="p-3 text-sm font-semibold text-gray-300 uppercase tracking-wider text-right rounded-tr-lg">Probability</th>
+                                </tr>
+                            </thead>
+                            <tbody id="weather-table-body" class="divide-y divide-gray-700">
+                                <!-- Rows will be populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Chart -->
+            <div class="lg:col-span-2 bg-gray-800 rounded-lg shadow-2xl p-6">
+                <h2 class="text-xl font-semibold text-white mb-4">Probability Distribution</h2>
+                <div class="relative h-96 md:h-[500px]">
+                    <canvas id="weather-chart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        // The data from the provided file is embedded directly here.
+        const allRegionData = {
+            "base": {
+                "realWorld": "Nebraska, Wyoming",
+                "seasons": {
+                    "spring": {
+                        "early": [{"name": "HIGHPRESSURE", "probability": 15}, {"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 15}, {"name": "MISTY", "probability": 5}, {"name": "RAIN", "probability": 10}, {"name": "SLEET", "probability": 10}],
+                        "mid": [{"name": "HIGHPRESSURE", "probability": 15}, {"name": "SUNNY", "probability": 25}, {"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 10}, {"name": "MISTY", "probability": 5}, {"name": "RAIN", "probability": 10}, {"name": "shower", "probability": 5}, {"name": "THUNDERSTORM", "probability": 5}],
+                        "late": [{"name": "HIGHPRESSURE", "probability": 20}, {"name": "SUNNY", "probability": 30}, {"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 5}, {"name": "RAIN", "probability": 10}, {"name": "shower", "probability": 5}, {"name": "THUNDERSTORM", "probability": 10}]
+                    },
+                    "summer": {
+                        "early": [{"name": "HIGHPRESSURE", "probability": 25}, {"name": "SUNNY", "probability": 35}, {"name": "CLOUDS", "probability": 15}, {"name": "OVERCAST", "probability": 5}, {"name": "RAIN", "probability": 10}, {"name": "THUNDERSTORM", "probability": 10}],
+                        "mid": [{"name": "HIGHPRESSURE", "probability": 25}, {"name": "SUNNY", "probability": 35}, {"name": "CLOUDS", "probability": 15}, {"name": "OVERCASTDARK", "probability": 5}, {"name": "MISTY", "probability": 2}, {"name": "FOG", "probability": 1}, {"name": "OVERCAST", "probability": 5}, {"name": "RAIN", "probability": 4}, {"name": "shower", "probability": 2}, {"name": "THUNDERSTORM", "probability": 6}],
+                        "late": [{"name": "HIGHPRESSURE", "probability": 20}, {"name": "SUNNY", "probability": 30}, {"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 10}, {"name": "MISTY", "probability": 5}, {"name": "RAIN", "probability": 10}, {"name": "THUNDERSTORM", "probability": 5}]
+                    },
+                    "autumn": {
+                        "early": [{"name": "HIGHPRESSURE", "probability": 25}, {"name": "SUNNY", "probability": 35}, {"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 10}, {"name": "RAIN", "probability": 5}],
+                        "mid": [{"name": "HIGHPRESSURE", "probability": 20}, {"name": "SUNNY", "probability": 30}, {"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 10}, {"name": "MISTY", "probability": 5}, {"name": "FOG", "probability": 3}, {"name": "RAIN", "probability": 4}, {"name": "shower", "probability": 2}, {"name": "SLEET", "probability": 1}],
+                        "late": [{"name": "HIGHPRESSURE", "probability": 15}, {"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 15}, {"name": "SNOWLIGHT", "probability": 10}, {"name": "RAIN", "probability": 5}, {"name": "SLEET", "probability": 10}]
+                    },
+                    "winter": {
+                        "early": [{"name": "HIGHPRESSURE", "probability": 15}, {"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 15}, {"name": "SNOWLIGHT", "probability": 15}, {"name": "SNOW", "probability": 10}, {"name": "BLIZZARD", "probability": 5}],
+                        "mid": [{"name": "HIGHPRESSURE", "probability": 10}, {"name": "SUNNY", "probability": 15}, {"name": "CLOUDS", "probability": 15}, {"name": "OVERCAST", "probability": 20}, {"name": "SNOWLIGHT", "probability": 15}, {"name": "SNOW", "probability": 15}, {"name": "BLIZZARD", "probability": 10}, {"name": "RAIN", "probability": 5}],
+                        "late": [{"name": "HIGHPRESSURE", "probability": 10}, {"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 15}, {"name": "SNOWCLEARING", "probability": 10}, {"name": "SNOWLIGHT", "probability": 10}, {"name": "SLEET", "probability": 10}]
+                    }
+                }
+            },
+            "westgrizzlies": {
+                "realWorld": "Colorado Rockies",
+                "seasons": {
+                    "spring": {
+                        "early": [{"name": "SUNNY", "probability": 10}, {"name": "CLOUDS", "probability": 10}, {"name": "SNOWLIGHT", "probability": 20}, {"name": "SNOW", "probability": 25}, {"name": "BLIZZARD", "probability": 25}, {"name": "WHITEOUT", "probability": 10}],
+                        "mid": [{"name": "HIGHPRESSURE", "probability": 10}, {"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 15}, {"name": "SNOWCLEARING", "probability": 15}, {"name": "SNOWLIGHT", "probability": 20}, {"name": "SNOW", "probability": 10}, {"name": "BLIZZARD", "probability": 10}],
+                        "late": [{"name": "HIGHPRESSURE", "probability": 15}, {"name": "SUNNY", "probability": 25}, {"name": "CLOUDS", "probability": 20}, {"name": "MISTY", "probability": 10}, {"name": "SNOWCLEARING", "probability": 10}, {"name": "RAIN", "probability": 10}, {"name": "THUNDERSTORM", "probability": 10}]
+                    },
+                    "summer": {
+                        "early": [{"name": "HIGHPRESSURE", "probability": 20}, {"name": "SUNNY", "probability": 30}, {"name": "CLOUDS", "probability": 20}, {"name": "MISTY", "probability": 5}, {"name": "RAIN", "probability": 15}, {"name": "THUNDERSTORM", "probability": 10}],
+                        "mid": [{"name": "SNOWLIGHT", "probability": 2}, {"name": "BLIZZARD", "probability": 1}, {"name": "MISTY", "probability": 10}, {"name": "FOG", "probability": 5}, {"name": "HIGHPRESSURE", "probability": 20}, {"name": "SUNNY", "probability": 30}, {"name": "CLOUDS", "probability": 15}, {"name": "RAIN", "probability": 7}, {"name": "THUNDERSTORM", "probability": 10}],
+                        "late": [{"name": "HIGHPRESSURE", "probability": 15}, {"name": "SUNNY", "probability": 25}, {"name": "CLOUDS", "probability": 25}, {"name": "MISTY", "probability": 10}, {"name": "RAIN", "probability": 15}, {"name": "THUNDERSTORM", "probability": 10}]
+                    },
+                    "autumn": {
+                        "early": [{"name": "HIGHPRESSURE", "probability": 20}, {"name": "SUNNY", "probability": 30}, {"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 10}, {"name": "MISTY", "probability": 5}, {"name": "RAIN", "probability": 10}],
+                        "mid": [{"name": "HIGHPRESSURE", "probability": 15}, {"name": "SUNNY", "probability": 25}, {"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 10}, {"name": "MISTY", "probability": 5}, {"name": "SNOWLIGHT", "probability": 15}, {"name": "SNOW", "probability": 5}, {"name": "BLIZZARD", "probability": 5}],
+                        "late": [{"name": "HIGHPRESSURE", "probability": 10}, {"name": "SUNNY", "probability": 15}, {"name": "CLOUDS", "probability": 15}, {"name": "OVERCAST", "probability": 10}, {"name": "SNOWLIGHT", "probability": 20}, {"name": "SNOW", "probability": 20}, {"name": "BLIZZARD", "probability": 10}]
+                    },
+                    "winter": {
+                        "early": [{"name": "SUNNY", "probability": 10}, {"name": "CLOUDS", "probability": 10}, {"name": "SNOWLIGHT", "probability": 25}, {"name": "SNOW", "probability": 25}, {"name": "BLIZZARD", "probability": 20}, {"name": "WHITEOUT", "probability": 10}],
+                        "mid": [{"name": "SUNNY", "probability": 5}, {"name": "CLOUDS", "probability": 5}, {"name": "SNOWLIGHT", "probability": 20}, {"name": "SNOW", "probability": 30}, {"name": "BLIZZARD", "probability": 25}, {"name": "WHITEOUT", "probability": 15}],
+                        "late": [{"name": "SUNNY", "probability": 10}, {"name": "CLOUDS", "probability": 15}, {"name": "SNOWCLEARING", "probability": 10}, {"name": "SNOWLIGHT", "probability": 25}, {"name": "SNOW", "probability": 20}, {"name": "BLIZZARD", "probability": 20}]
+                    }
+                }
+            },
+            "guarma": {
+                "realWorld": "Cuba",
+                "seasons": {
+                    "spring": {
+                        "early": [{"name": "SUNNY", "probability": 40}, {"name": "HIGHPRESSURE", "probability": 30}, {"name": "CLOUDS", "probability": 20}, {"name": "shower", "probability": 10}],
+                        "mid": [{"name": "SUNNY", "probability": 35}, {"name": "HIGHPRESSURE", "probability": 25}, {"name": "CLOUDS", "probability": 15}, {"name": "MISTY", "probability": 5}, {"name": "shower", "probability": 10}, {"name": "RAIN", "probability": 5}, {"name": "THUNDERSTORM", "probability": 5}],
+                        "late": [{"name": "SUNNY", "probability": 30}, {"name": "CLOUDS", "probability": 20}, {"name": "MISTY", "probability": 10}, {"name": "shower", "probability": 15}, {"name": "RAIN", "probability": 10}, {"name": "THUNDERSTORM", "probability": 10}, {"name": "HURRICANE", "probability": 5}]
+                    },
+                    "summer": {
+                        "early": [{"name": "SUNNY", "probability": 25}, {"name": "CLOUDS", "probability": 15}, {"name": "FOG", "probability": 10}, {"name": "MISTY", "probability": 10}, {"name": "shower", "probability": 10}, {"name": "RAIN", "probability": 10}, {"name": "THUNDERSTORM", "probability": 10}, {"name": "HURRICANE", "probability": 10}],
+                        "mid": [{"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 10}, {"name": "FOG", "probability": 10}, {"name": "MISTY", "probability": 10}, {"name": "shower", "probability": 8}, {"name": "RAIN", "probability": 12}, {"name": "THUNDERSTORM", "probability": 15}, {"name": "HURRICANE", "probability": 15}],
+                        "late": [{"name": "SUNNY", "probability": 15}, {"name": "CLOUDS", "probability": 10}, {"name": "FOG", "probability": 10}, {"name": "MISTY", "probability": 10}, {"name": "shower", "probability": 10}, {"name": "RAIN", "probability": 15}, {"name": "THUNDERSTORM", "probability": 15}, {"name": "HURRICANE", "probability": 15}]
+                    },
+                    "autumn": {
+                        "early": [{"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 15}, {"name": "FOG", "probability": 10}, {"name": "MISTY", "probability": 10}, {"name": "shower", "probability": 10}, {"name": "RAIN", "probability": 15}, {"name": "THUNDERSTORM", "probability": 10}, {"name": "HURRICANE", "probability": 10}],
+                        "mid": [{"name": "SUNNY", "probability": 15}, {"name": "CLOUDS", "probability": 15}, {"name": "FOG", "probability": 10}, {"name": "MISTY", "probability": 10}, {"name": "shower", "probability": 10}, {"name": "RAIN", "probability": 15}, {"name": "THUNDERSTORM", "probability": 15}, {"name": "HURRICANE", "probability": 10}],
+                        "late": [{"name": "SUNNY", "probability": 30}, {"name": "HIGHPRESSURE", "probability": 20}, {"name": "CLOUDS", "probability": 20}, {"name": "shower", "probability": 15}, {"name": "RAIN", "probability": 10}, {"name": "HURRICANE", "probability": 5}]
+                    },
+                    "winter": {
+                        "early": [{"name": "SUNNY", "probability": 45}, {"name": "HIGHPRESSURE", "probability": 25}, {"name": "CLOUDS", "probability": 21}, {"name": "MISTY", "probability": 5}, {"name": "shower", "probability": 4}],
+                        "mid": [{"name": "SUNNY", "probability": 50}, {"name": "HIGHPRESSURE", "probability": 30}, {"name": "CLOUDS", "probability": 15}, {"name": "MISTY", "probability": 3}, {"name": "shower", "probability": 2}],
+                        "late": [{"name": "SUNNY", "probability": 45}, {"name": "HIGHPRESSURE", "probability": 35}, {"name": "CLOUDS", "probability": 15}, {"name": "shower", "probability": 5}]
+                    }
+                }
+            },
+            "greatPlains": {
+                "realWorld": "Kansas",
+                "seasons": {
+                    "spring": {
+                        "early": [{"name": "SUNNY", "probability": 25}, {"name": "HIGHPRESSURE", "probability": 20}, {"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 15}, {"name": "RAIN", "probability": 10}, {"name": "THUNDERSTORM", "probability": 5}],
+                        "mid": [{"name": "SUNNY", "probability": 20}, {"name": "HIGHPRESSURE", "probability": 15}, {"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 10}, {"name": "OVERCASTDARK", "probability": 10}, {"name": "RAIN", "probability": 7}, {"name": "THUNDERSTORM", "probability": 15}, {"name": "hail", "probability": 3}],
+                        "late": [{"name": "SUNNY", "probability": 25}, {"name": "HIGHPRESSURE", "probability": 20}, {"name": "CLOUDS", "probability": 15}, {"name": "OVERCASTDARK", "probability": 5}, {"name": "THUNDERSTORM", "probability": 35}]
+                    },
+                    "summer": {
+                        "early": [{"name": "SUNNY", "probability": 35}, {"name": "HIGHPRESSURE", "probability": 25}, {"name": "CLOUDS", "probability": 15}, {"name": "THUNDERSTORM", "probability": 25}],
+                        "mid": [{"name": "SUNNY", "probability": 40}, {"name": "HIGHPRESSURE", "probability": 30}, {"name": "CLOUDS", "probability": 10}, {"name": "OVERCAST", "probability": 2}, {"name": "OVERCASTDARK", "probability": 3}, {"name": "THUNDERSTORM", "probability": 15}],
+                        "late": [{"name": "SUNNY", "probability": 45}, {"name": "HIGHPRESSURE", "probability": 35}, {"name": "CLOUDS", "probability": 15}, {"name": "THUNDERSTORM", "probability": 5}]
+                    },
+                    "autumn": {
+                        "early": [{"name": "SUNNY", "probability": 40}, {"name": "HIGHPRESSURE", "probability": 30}, {"name": "CLOUDS", "probability": 25}, {"name": "RAIN", "probability": 5}],
+                        "mid": [{"name": "SUNNY", "probability": 35}, {"name": "HIGHPRESSURE", "probability": 25}, {"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 10}, {"name": "RAIN", "probability": 3}, {"name": "THUNDERSTORM", "probability": 2}],
+                        "late": [{"name": "SUNNY", "probability": 30}, {"name": "HIGHPRESSURE", "probability": 20}, {"name": "CLOUDS", "probability": 30}, {"name": "OVERCAST", "probability": 15}, {"name": "RAIN", "probability": 5}]
+                    },
+                    "winter": {
+                        "early": [{"name": "SUNNY", "probability": 35}, {"name": "HIGHPRESSURE", "probability": 25}, {"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 10}, {"name": "SNOWLIGHT", "probability": 5}],
+                        "mid": [{"name": "SUNNY", "probability": 30}, {"name": "HIGHPRESSURE", "probability": 25}, {"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 15}, {"name": "SNOWLIGHT", "probability": 5}, {"name": "BLIZZARD", "probability": 5}],
+                        "late": [{"name": "SUNNY", "probability": 35}, {"name": "HIGHPRESSURE", "probability": 30}, {"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 10}, {"name": "SNOWLIGHT", "probability": 5}]
+                    }
+                }
+            },
+            "bigValley": {
+                "realWorld": "California's Sierra Nevada (Yosemite)",
+                "seasons": {
+                    "spring": {
+                        "early": [{"name": "HIGHPRESSURE", "probability": 15}, {"name": "SUNNY", "probability": 25}, {"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 10}, {"name": "RAIN", "probability": 15}, {"name": "SNOWLIGHT", "probability": 15}],
+                        "mid": [{"name": "HIGHPRESSURE", "probability": 20}, {"name": "SUNNY", "probability": 35}, {"name": "CLOUDS", "probability": 20}, {"name": "Misty", "probability": 5}, {"name": "RAIN", "probability": 15}, {"name": "shower", "probability": 5}],
+                        "late": [{"name": "HIGHPRESSURE", "probability": 25}, {"name": "SUNNY", "probability": 40}, {"name": "CLOUDS", "probability": 20}, {"name": "Misty", "probability": 5}, {"name": "RAIN", "probability": 10}]
+                    },
+                    "summer": {
+                        "early": [{"name": "HIGHPRESSURE", "probability": 30}, {"name": "SUNNY", "probability": 45}, {"name": "CLOUDS", "probability": 15}, {"name": "Misty", "probability": 5}, {"name": "RAIN", "probability": 5}],
+                        "mid": [{"name": "HIGHPRESSURE", "probability": 30}, {"name": "SUNNY", "probability": 45}, {"name": "Misty", "probability": 5}, {"name": "fog", "probability": 2}, {"name": "CLOUDS", "probability": 12}, {"name": "OVERCASTDARK", "probability": 2}, {"name": "RAIN", "probability": 2}, {"name": "shower", "probability": 2}],
+                        "late": [{"name": "HIGHPRESSURE", "probability": 35}, {"name": "SUNNY", "probability": 50}, {"name": "CLOUDS", "probability": 10}, {"name": "Misty", "probability": 5}]
+                    },
+                    "autumn": {
+                        "early": [{"name": "HIGHPRESSURE", "probability": 30}, {"name": "SUNNY", "probability": 45}, {"name": "CLOUDS", "probability": 20}, {"name": "RAIN", "probability": 5}],
+                        "mid": [{"name": "HIGHPRESSURE", "probability": 25}, {"name": "SUNNY", "probability": 40}, {"name": "CLOUDS", "probability": 20}, {"name": "Misty", "probability": 5}, {"name": "fog", "probability": 3}, {"name": "OVERCAST", "probability": 4}, {"name": "RAIN", "probability": 2}, {"name": "SNOWLIGHT", "probability": 1}],
+                        "late": [{"name": "HIGHPRESSURE", "probability": 20}, {"name": "SUNNY", "probability": 30}, {"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 10}, {"name": "RAIN", "probability": 5}, {"name": "SNOWLIGHT", "probability": 10}]
+                    },
+                    "winter": {
+                        "early": [{"name": "HIGHPRESSURE", "probability": 15}, {"name": "SUNNY", "probability": 25}, {"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 10}, {"name": "SNOWLIGHT", "probability": 15}, {"name": "SNOW", "probability": 15}],
+                        "mid": [{"name": "HIGHPRESSURE", "probability": 10}, {"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 15}, {"name": "OVERCAST", "probability": 15}, {"name": "SNOWLIGHT", "probability": 20}, {"name": "SNOW", "probability": 20}],
+                        "late": [{"name": "HIGHPRESSURE", "probability": 15}, {"name": "SUNNY", "probability": 25}, {"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 10}, {"name": "SNOWCLEARING", "probability": 10}, {"name": "SNOWLIGHT", "probability": 20}]
+                    }
+                }
+            },
+            "swamp": {
+                "realWorld": "Louisiana (Bayou, Wetlands)",
+                "seasons": {
+                    "spring": {
+                        "early": [{"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 20}, {"name": "FOG", "probability": 25}, {"name": "MISTY", "probability": 20}, {"name": "OVERCAST", "probability": 10}, {"name": "RAIN", "probability": 5}],
+                        "mid": [{"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 15}, {"name": "FOG", "probability": 20}, {"name": "MISTY", "probability": 15}, {"name": "OVERCAST", "probability": 10}, {"name": "RAIN", "probability": 5}, {"name": "THUNDERSTORM", "probability": 15}],
+                        "late": [{"name": "SUNNY", "probability": 15}, {"name": "CLOUDS", "probability": 15}, {"name": "FOG", "probability": 20}, {"name": "MISTY", "probability": 15}, {"name": "THUNDERSTORM", "probability": 25}, {"name": "HURRICANE", "probability": 10}]
+                    },
+                    "summer": {
+                        "early": [{"name": "SUNNY", "probability": 10}, {"name": "CLOUDS", "probability": 10}, {"name": "FOG", "probability": 20}, {"name": "MISTY", "probability": 20}, {"name": "THUNDERSTORM", "probability": 25}, {"name": "HURRICANE", "probability": 15}],
+                        "mid": [{"name": "SUNNY", "probability": 10}, {"name": "CLOUDS", "probability": 10}, {"name": "FOG", "probability": 25}, {"name": "MISTY", "probability": 20}, {"name": "OVERCAST", "probability": 5}, {"name": "shower", "probability": 5}, {"name": "THUNDERSTORM", "probability": 15}, {"name": "HURRICANE", "probability": 10}],
+                        "late": [{"name": "SUNNY", "probability": 10}, {"name": "CLOUDS", "probability": 10}, {"name": "FOG", "probability": 20}, {"name": "MISTY", "probability": 20}, {"name": "THUNDERSTORM", "probability": 20}, {"name": "HURRICANE", "probability": 20}]
+                    },
+                    "autumn": {
+                        "early": [{"name": "SUNNY", "probability": 15}, {"name": "CLOUDS", "probability": 15}, {"name": "FOG", "probability": 25}, {"name": "MISTY", "probability": 20}, {"name": "RAIN", "probability": 5}, {"name": "THUNDERSTORM", "probability": 10}, {"name": "HURRICANE", "probability": 15}],
+                        "mid": [{"name": "SUNNY", "probability": 15}, {"name": "CLOUDS", "probability": 10}, {"name": "FOG", "probability": 30}, {"name": "MISTY", "probability": 25}, {"name": "OVERCAST", "probability": 5}, {"name": "RAIN", "probability": 5}, {"name": "THUNDERSTORM", "probability": 5}, {"name": "HURRICANE", "probability": 5}],
+                        "late": [{"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 15}, {"name": "FOG", "probability": 35}, {"name": "MISTY", "probability": 25}, {"name": "RAIN", "probability": 5}]
+                    },
+                    "winter": {
+                        "early": [{"name": "SUNNY", "probability": 15}, {"name": "CLOUDS", "probability": 20}, {"name": "FOG", "probability": 32}, {"name": "MISTY", "probability": 25}, {"name": "OVERCAST", "probability": 5}, {"name": "SLEET", "probability": 2}, {"name": "SNOWLIGHT", "probability": 1}],
+                        "mid": [{"name": "SUNNY", "probability": 15}, {"name": "CLOUDS", "probability": 20}, {"name": "FOG", "probability": 27}, {"name": "MISTY", "probability": 20}, {"name": "OVERCAST", "probability": 10}, {"name": "RAIN", "probability": 5}, {"name": "SLEET", "probability": 2}, {"name": "SNOWLIGHT", "probability": 1}],
+                        "late": [{"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 25}, {"name": "FOG", "probability": 25}, {"name": "MISTY", "probability": 20}, {"name": "RAIN", "probability": 5}, {"name": "SLEET", "probability": 3}, {"name": "SNOWLIGHT", "probability": 2}]
+                    }
+                }
+            },
+            "newaustin": {
+                "realWorld": "Arizona, Texas, Mexico",
+                "seasons": {
+                    "spring": {
+                        "early": [{"name": "SUNNY", "probability": 60}, {"name": "HIGHPRESSURE", "probability": 30}, {"name": "CLOUDS", "probability": 5}, {"name": "SANDSTORM", "probability": 5}],
+                        "mid": [{"name": "SUNNY", "probability": 55}, {"name": "HIGHPRESSURE", "probability": 30}, {"name": "CLOUDS", "probability": 10}, {"name": "SANDSTORM", "probability": 5}],
+                        "late": [{"name": "SUNNY", "probability": 50}, {"name": "HIGHPRESSURE", "probability": 35}, {"name": "CLOUDS", "probability": 10}, {"name": "SANDSTORM", "probability": 5}]
+                    },
+                    "summer": {
+                        "early": [{"name": "SUNNY", "probability": 45}, {"name": "HIGHPRESSURE", "probability": 35}, {"name": "CLOUDS", "probability": 10}, {"name": "SANDSTORM", "probability": 10}],
+                        "mid": [{"name": "SUNNY", "probability": 40}, {"name": "HIGHPRESSURE", "probability": 30}, {"name": "CLOUDS", "probability": 5}, {"name": "OVERCASTDARK", "probability": 5}, {"name": "SANDSTORM", "probability": 10}, {"name": "THUNDERSTORM", "probability": 10}],
+                        "late": [{"name": "SUNNY", "probability": 35}, {"name": "HIGHPRESSURE", "probability": 25}, {"name": "CLOUDS", "probability": 10}, {"name": "SANDSTORM", "probability": 10}, {"name": "THUNDERSTORM", "probability": 20}]
+                    },
+                    "autumn": {
+                        "early": [{"name": "SUNNY", "probability": 45}, {"name": "HIGHPRESSURE", "probability": 35}, {"name": "CLOUDS", "probability": 10}, {"name": "SANDSTORM", "probability": 5}, {"name": "THUNDERSTORM", "probability": 5}],
+                        "mid": [{"name": "SUNNY", "probability": 50}, {"name": "HIGHPRESSURE", "probability": 35}, {"name": "CLOUDS", "probability": 10}, {"name": "SANDSTORM", "probability": 3}, {"name": "THUNDERSTORM", "probability": 2}],
+                        "late": [{"name": "SUNNY", "probability": 55}, {"name": "HIGHPRESSURE", "probability": 35}, {"name": "CLOUDS", "probability": 10}]
+                    },
+                    "winter": {
+                        "early": [{"name": "SUNNY", "probability": 60}, {"name": "HIGHPRESSURE", "probability": 30}, {"name": "CLOUDS", "probability": 10}],
+                        "mid": [{"name": "SUNNY", "probability": 60}, {"name": "HIGHPRESSURE", "probability": 30}, {"name": "CLOUDS", "probability": 10}],
+                        "late": [{"name": "SUNNY", "probability": 55}, {"name": "HIGHPRESSURE", "probability": 35}, {"name": "CLOUDS", "probability": 10}]
+                    }
+                }
+            },
+            "roanokeRidge": {
+                "realWorld": "West Virginia (Appalachians)",
+                "seasons": {
+                    "spring": {
+                        "early": [{"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 20}, {"name": "MISTY", "probability": 20}, {"name": "FOG", "probability": 15}, {"name": "RAIN", "probability": 15}, {"name": "SLEET", "probability": 10}],
+                        "mid": [{"name": "SUNNY", "probability": 15}, {"name": "CLOUDS", "probability": 15}, {"name": "OVERCAST", "probability": 15}, {"name": "MISTY", "probability": 20}, {"name": "FOG", "probability": 10}, {"name": "RAIN", "probability": 20}, {"name": "shower", "probability": 5}],
+                        "late": [{"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 20}, {"name": "MISTY", "probability": 15}, {"name": "FOG", "probability": 10}, {"name": "RAIN", "probability": 20}, {"name": "THUNDERSTORM", "probability": 15}]
+                    },
+                    "summer": {
+                        "early": [{"name": "SUNNY", "probability": 25}, {"name": "MISTY", "probability": 20}, {"name": "FOG", "probability": 10}, {"name": "CLOUDS", "probability": 15}, {"name": "RAIN", "probability": 15}, {"name": "THUNDERSTORM", "probability": 15}],
+                        "mid": [{"name": "SUNNY", "probability": 20}, {"name": "MISTY", "probability": 20}, {"name": "FOG", "probability": 10}, {"name": "CLOUDS", "probability": 15}, {"name": "OVERCAST", "probability": 10}, {"name": "RAIN", "probability": 10}, {"name": "THUNDERSTORM", "probability": 15}],
+                        "late": [{"name": "SUNNY", "probability": 15}, {"name": "MISTY", "probability": 25}, {"name": "FOG", "probability": 15}, {"name": "CLOUDS", "probability": 20}, {"name": "RAIN", "probability": 15}, {"name": "THUNDERSTORM", "probability": 10}]
+                    },
+                    "autumn": {
+                        "early": [{"name": "SUNNY", "probability": 20}, {"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 15}, {"name": "MISTY", "probability": 20}, {"name": "FOG", "probability": 10}, {"name": "RAIN", "probability": 10}],
+                        "mid": [{"name": "SUNNY", "probability": 15}, {"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 15}, {"name": "MISTY", "probability": 20}, {"name": "FOG", "probability": 10}, {"name": "RAIN", "probability": 15}, {"name": "shower", "probability": 4}, {"name": "SLEET", "probability": 1}],
+                        "late": [{"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 20}, {"name": "MISTY", "probability": 15}, {"name": "FOG", "probability": 10}, {"name": "RAIN", "probability": 10}, {"name": "SLEET", "probability": 10}, {"name": "SNOWLIGHT", "probability": 10}]
+                    },
+                    "winter": {
+                        "early": [{"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 20}, {"name": "MISTY", "probability": 15}, {"name": "FOG", "probability": 10}, {"name": "RAIN", "probability": 10}, {"name": "SLEET", "probability": 10}, {"name": "SNOWLIGHT", "probability": 15}],
+                        "mid": [{"name": "CLOUDS", "probability": 20}, {"name": "OVERCAST", "probability": 25}, {"name": "MISTY", "probability": 10}, {"name": "SLEET", "probability": 15}, {"name": "SNOWLIGHT", "probability": 15}, {"name": "SNOW", "probability": 15}],
+                        "late": [{"name": "CLOUDS", "probability": 25}, {"name": "OVERCAST", "probability": 25}, {"name": "MISTY", "probability": 15}, {"name": "FOG", "probability": 5}, {"name": "SLEET", "probability": 15}, {"name": "SNOWLIGHT", "probability": 15}]
+                    }
+                }
+            },
+            "scarlettmeadows": {
+                "realWorld": "Georgia, South Carolina",
+                "seasons": {
+                    "spring": {
+                        "early": [{"name": "SUNNY", "probability": 25}, {"name": "HIGHPRESSURE", "probability": 20}, {"name": "CLOUDS", "probability": 25}, {"name": "MISTY", "probability": 10}, {"name": "OVERCAST", "probability": 10}, {"name": "RAIN", "probability": 10}],
+                        "mid": [{"name": "SUNNY", "probability": 25}, {"name": "HIGHPRESSURE", "probability": 15}, {"name": "CLOUDS", "probability": 20}, {"name": "MISTY", "probability": 10}, {"name": "OVERCAST", "probability": 10}, {"name": "shower", "probability": 5}, {"name": "rain", "probability": 5}, {"name": "THUNDERSTORM", "probability": 10}],
+                        "late": [{"name": "SUNNY", "probability": 20}, {"name": "HIGHPRESSURE", "probability": 15}, {"name": "CLOUDS", "probability": 15}, {"name": "MISTY", "probability": 10}, {"name": "THUNDERSTORM", "probability": 40}]
+                    },
+                    "summer": {
+                        "early": [{"name": "SUNNY", "probability": 25}, {"name": "HIGHPRESSURE", "probability": 20}, {"name": "CLOUDS", "probability": 20}, {"name": "THUNDERSTORM", "probability": 35}],
+                        "mid": [{"name": "SUNNY", "probability": 25}, {"name": "HIGHPRESSURE", "probability": 15}, {"name": "CLOUDS", "probability": 15}, {"name": "MISTY", "probability": 10}, {"name": "FOG", "probability": 5}, {"name": "OVERCAST", "probability": 8}, {"name": "shower", "probability": 5}, {"name": "rain", "probability": 7}, {"name": "THUNDERSTORM", "probability": 7}, {"name": "HURRICANE", "probability": 3}],
+                        "late": [{"name": "SUNNY", "probability": 20}, {"name": "HIGHPRESSURE", "probability": 15}, {"name": "CLOUDS", "probability": 15}, {"name": "THUNDERSTORM", "probability": 30}, {"name": "HURRICANE", "probability": 20}]
+                    },
+                    "autumn": {
+                        "early": [{"name": "SUNNY", "probability": 25}, {"name": "HIGHPRESSURE", "probability": 20}, {"name": "CLOUDS", "probability": 20}, {"name": "MISTY", "probability": 10}, {"name": "RAIN", "probability": 10}, {"name": "HURRICANE", "probability": 15}],
+                        "mid": [{"name": "SUNNY", "probability": 30}, {"name": "HIGHPRESSURE", "probability": 20}, {"name": "CLOUDS", "probability": 20}, {"name": "MISTY", "probability": 10}, {"name": "FOG", "probability": 5}, {"name": "OVERCAST", "probability": 8}, {"name": "shower", "probability": 3}, {"name": "rain", "probability": 2}, {"name": "THUNDERSTORM", "probability": 1}, {"name": "HURRICANE", "probability": 1}],
+                        "late": [{"name": "SUNNY", "probability": 35}, {"name": "HIGHPRESSURE", "probability": 25}, {"name": "CLOUDS", "probability": 20}, {"name": "MISTY", "probability": 10}, {"name": "FOG", "probability": 5}, {"name": "RAIN", "probability": 5}]
+                    },
+                    "winter": {
+                        "early": [{"name": "SUNNY", "probability": 25}, {"name": "HIGHPRESSURE", "probability": 20}, {"name": "CLOUDS", "probability": 20}, {"name": "MISTY", "probability": 10}, {"name": "OVERCAST", "probability": 15}, {"name": "RAIN", "probability": 5}, {"name": "SLEET", "probability": 5}],
+                        "mid": [{"name": "SUNNY", "probability": 20}, {"name": "HIGHPRESSURE", "probability": 15}, {"name": "CLOUDS", "probability": 25}, {"name": "MISTY", "probability": 10}, {"name": "FOG", "probability": 5}, {"name": "OVERCAST", "probability": 15}, {"name": "RAIN", "probability": 5}, {"name": "SLEET", "probability": 2}, {"name": "SNOWLIGHT", "probability": 3}],
+                        "late": [{"name": "SUNNY", "probability": 25}, {"name": "HIGHPRESSURE", "probability": 20}, {"name": "CLOUDS", "probability": 20}, {"name": "MISTY", "probability": 5}, {"name": "OVERCAST", "probability": 15}, {"name": "RAIN", "probability": 10}, {"name": "SLEET", "probability": 3}, {"name": "SNOWLIGHT", "probability": 2}]
+                    }
+                }
+            }
+        };
+
+        // --- CHART & DOM REFERENCES ---
+        let myChart; // Global chart instance
+        const ctx = document.getElementById('weather-chart').getContext('2d');
+        
+        const regionSelect = document.getElementById('region-select');
+        const seasonSelect = document.getElementById('season-select');
+        const partSelect = document.getElementById('part-select');
+        const realWorldInfo = document.getElementById('real-world-info');
+        const tableBody = document.getElementById('weather-table-body');
+
+        // Color palette for the chart
+        const chartColors = [
+            '#3B82F6', // blue-500
+            '#10B981', // emerald-500
+            '#F59E0B', // amber-500
+            '#EF4444', // red-500
+            '#8B5CF6', // violet-500
+            '#EC4899', // pink-500
+            '#6366F1', // indigo-500
+            '#06B6D4', // cyan-500
+            '#F97316', // orange-500
+            '#84CC16', // lime-500
+            '#A855F7', // purple-500
+            '#D946EF', // fuchsia-500
+        ];
+
+        // --- FUNCTIONS ---
+
+        /**
+         * Populates a select element with options
+         * @param {HTMLSelectElement} selectElement - The <select> element to populate
+         * @param {string[]} options - An array of strings for the options
+         */
+        function populateSelect(selectElement, options) {
+            selectElement.innerHTML = ''; // Clear existing options
+            options.forEach(option => {
+                const optionElement = document.createElement('option');
+                optionElement.value = option;
+                optionElement.textContent = option.charAt(0).toUpperCase() + option.slice(1); // Capitalize first letter
+                selectElement.appendChild(optionElement);
+            });
+        }
+
+        /**
+         * Populates the season select based on the chosen region
+         */
+        function handleRegionChange() {
+            const selectedRegion = regionSelect.value;
+            const seasons = Object.keys(allRegionData[selectedRegion].seasons);
+            populateSelect(seasonSelect, seasons);
+            // Trigger a change on the season select to update the part select
+            handleSeasonChange();
+        }
+
+        /**
+         * Populates the part select based on the chosen region and season
+         */
+        function handleSeasonChange() {
+            const selectedRegion = regionSelect.value;
+            const selectedSeason = seasonSelect.value;
+            const parts = Object.keys(allRegionData[selectedRegion].seasons[selectedSeason]);
+            populateSelect(partSelect, parts);
+            // Trigger an update on the dashboard
+            updateDashboard();
+        }
+
+        /**
+         * Main function to update all dashboard elements
+         */
+        function updateDashboard() {
+            const selectedRegion = regionSelect.value;
+            const selectedSeason = seasonSelect.value;
+            const selectedPart = partSelect.value;
+
+            // Ensure all data is available before proceeding
+            if (!selectedRegion || !selectedSeason || !selectedPart) {
+                return;
+            }
+
+            const regionData = allRegionData[selectedRegion];
+            const weatherData = regionData.seasons[selectedSeason][selectedPart];
+
+            // 1. Update Real-World Info
+            realWorldInfo.textContent = regionData.realWorld || 'Unknown';
+
+            // 2. Update Data Table
+            tableBody.innerHTML = ''; // Clear table
+            weatherData.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-700 transition duration-150 ease-in-out';
+                row.innerHTML = `
+                    <td class="p-3 text-gray-200 font-medium">${item.name}</td>
+                    <td class="p-3 text-gray-200 text-right font-mono">${item.probability}%</td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            // 3. Update Chart
+            const labels = weatherData.map(d => d.name);
+            const probabilities = weatherData.map(d => d.probability);
+
+            // Destroy previous chart instance if it exists
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            // Create new chart
+            myChart = new Chart(ctx, {
+                type: 'doughnut', // 'pie' or 'doughnut'
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Probability %',
+                        data: probabilities,
+                        backgroundColor: chartColors,
+                        borderColor: '#4A5568', // gray-700
+                        borderWidth: 2,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#E2E8F0', // gray-200
+                                font: {
+                                    size: 14,
+                                    family: "'Inter', sans-serif"
+                                },
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#1F2937', // gray-800
+                            titleColor: '#E2E8F0', // gray-200
+                            bodyColor: '#E2E8F0', // gray-200
+                            borderColor: '#4A5568', // gray-700
+                            borderWidth: 1,
+                            padding: 12,
+                            cornerRadius: 8,
+                            titleFont: {
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            bodyFont: {
+                                size: 14
+                            },
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '60%' // Adjust for doughnut hole size
+                }
+            });
+        }
+
+        // --- INITIALIZATION ---
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add event listeners
+            regionSelect.addEventListener('change', handleRegionChange);
+            seasonSelect.addEventListener('change', handleSeasonChange);
+            partSelect.addEventListener('change', updateDashboard);
+
+            // Initial population
+            const regions = Object.keys(allRegionData);
+            populateSelect(regionSelect, regions);
+            
+            // Trigger the first load
+            handleRegionChange();
+        });
+
+    </script>
+</body>
+</html>
+
+
+
